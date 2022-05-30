@@ -1,41 +1,77 @@
 use super::models::*;
 use super::state::AppState;
 use actix_web::{web, HttpRequest, HttpResponse, Responder, Result};
-// use log::{info, warn};
+use chrono::Utc;
+use log::debug;
 
-pub async fn health_check(app_state: web::Data<AppState>) -> HttpResponse {
+pub async fn health_check(app_state: web::Data<AppState>) -> Result<impl Responder> {
     let health_check_response = &app_state.health_check_response;
     let mut visit_count = app_state.visit_count.lock().unwrap();
     let response = format!("{} {} times", health_check_response, visit_count);
     *visit_count += 1;
-    HttpResponse::Ok().json(&response)
+
+    Ok(web::Json(response))
 }
 
-pub async fn create_device() -> HttpResponse {
-    HttpResponse::Ok().finish()
+pub async fn create_device(body: web::Json<Device>) -> HttpResponse {
+    let device = Device {
+        device_id: body.device_id.clone(),
+        name: body.name.clone(),
+        registered_at: Some(Utc::now().naive_utc()),
+    };
+
+    debug!("New device created: {:?}", &device);
+    HttpResponse::Ok().json(device)
 }
 
 pub async fn list_devices() -> HttpResponse {
-    HttpResponse::Ok().finish()
+    let devices: Vec<Device> = vec![
+        Device {
+            device_id: String::from("11-11"),
+            name: String::from("Arduino UNI"),
+            registered_at: Some(Utc::now().naive_utc()),
+        },
+        Device {
+            device_id: String::from("11-22"),
+            name: String::from("Arduino MKR"),
+            registered_at: Some(Utc::now().naive_utc()),
+        },
+    ];
+
+    HttpResponse::Ok().json(devices)
 }
 
 pub async fn get_device(req: HttpRequest) -> HttpResponse {
-    let device_id = req.match_info().get("device_id").unwrap_or("");
-    dbg!(device_id);
-    HttpResponse::Ok().finish()
-}
+    let device_id = req.match_info().get("device_id").unwrap().to_owned();
 
-pub async fn ping(req: HttpRequest) -> Result<impl Responder> {
-    dbg!(&req.query_string());
-    // HttpResponse::ok
-    // web::Json(json!({ "temperature": 42.3 }))
+    dbg!(&device_id);
 
-    let id: i32 = req.match_info().query("id").parse().unwrap_or(9004);
+    if device_id.is_empty() {
+        return HttpResponse::NotFound().finish();
+    }
 
-    let obj = Ping {
-        message: "Ping pong".to_string(),
-        id,
+    let device = Device {
+        device_id,
+        name: String::from("Ardiono UNO"),
+        registered_at: Some(Utc::now().naive_utc()),
     };
 
-    Ok(web::Json(obj))
+    HttpResponse::Ok().json(device)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::http::StatusCode;
+    use actix_web::test;
+
+    #[actix_web::test]
+    async fn get_device_test() {
+        let req = test::TestRequest::default()
+            .param("device_id", "11-22".to_owned())
+            .to_http_request();
+
+        let resp = get_device(req).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
 }
