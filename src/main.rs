@@ -1,5 +1,7 @@
 use actix_web::{middleware, web, App, HttpServer};
-use std::{sync::Mutex, time::Duration};
+use dotenv::dotenv;
+use sqlx::postgres::PgPoolOptions;
+use std::{env, io, sync::Mutex, time::Duration};
 
 mod handlers;
 mod models;
@@ -10,20 +12,30 @@ use routes::all_routes;
 use state::AppState;
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info");
+async fn main() -> io::Result<()> {
+    dotenv().ok();
+    env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
 
+    // Create a connection pool
+    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
+    let db_pool = PgPoolOptions::new()
+        .max_connections(100)
+        .connect(&db_url)
+        .await
+        .unwrap();
+
     // Shared data across threads
-    let shared_data = web::Data::new(AppState {
+    let app_data = web::Data::new(AppState {
         health_check_response: String::from("OK"),
         visit_count: Mutex::new(0),
+        db: db_pool,
     });
 
     // Construct App and routes
     let app = move || {
         App::new()
-            .app_data(shared_data.clone())
+            .app_data(app_data.clone())
             .wrap(middleware::Logger::default())
             .configure(all_routes)
     };
