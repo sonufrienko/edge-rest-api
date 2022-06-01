@@ -64,11 +64,26 @@ mod tests {
     use super::*;
     use actix_web::http::StatusCode;
     use actix_web::test;
+    use dotenv::dotenv;
+    use sqlx::postgres::PgPoolOptions;
+    use std::env;
+    use std::sync::Mutex;
 
     #[actix_web::test]
     async fn get_device_test() {
+        dotenv().ok();
+        let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
+        let db_pool = PgPoolOptions::new().connect(&db_url).await.unwrap();
+
+        let app_data = web::Data::new(AppState {
+            health_check_response: String::from("OK"),
+            visit_count: Mutex::new(0),
+            db: db_pool,
+        });
+
         let req = test::TestRequest::default()
             .param("device_id", "11-22".to_owned())
+            .app_data(app_data)
             .to_http_request();
 
         let resp = get_device(req).await;

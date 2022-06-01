@@ -5,12 +5,12 @@
 ## Todo
 
 - [x] Rest API with Actix
-- [ ] Connect to PostgreSQL
+- [x] Connect to PostgreSQL
+- [x] Integration tests
 - [ ] Implement CRUD in DB
 - [ ] Authentication (JWT or Cert)
 - [ ] Handle errors
 - [ ] Unit tests
-- [ ] Integration tests
 - [ ] Benchmarking
 - [ ] Logging
 
