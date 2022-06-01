@@ -1,8 +1,8 @@
+use super::db_access::*;
 use super::models::*;
 use super::state::AppState;
 use actix_web::{web, HttpRequest, HttpResponse, Responder, Result};
-use chrono::Utc;
-use log::debug;
+use log::warn;
 
 pub async fn health_check(app_state: web::Data<AppState>) -> Result<impl Responder> {
     let health_check_response = &app_state.health_check_response;
@@ -13,50 +13,41 @@ pub async fn health_check(app_state: web::Data<AppState>) -> Result<impl Respond
     Ok(web::Json(response))
 }
 
-pub async fn create_device(body: web::Json<Device>) -> HttpResponse {
-    let device = Device {
-        device_id: body.device_id.clone(),
-        name: body.name.clone(),
-        registered_at: Some(Utc::now().naive_utc()),
-    };
-
-    debug!("New device created: {:?}", &device);
-    HttpResponse::Ok().json(device)
-}
-
-pub async fn list_devices() -> HttpResponse {
-    let devices: Vec<Device> = vec![
-        Device {
-            device_id: String::from("11-11"),
-            name: String::from("Arduino UNI"),
-            registered_at: Some(Utc::now().naive_utc()),
-        },
-        Device {
-            device_id: String::from("11-22"),
-            name: String::from("Arduino MKR"),
-            registered_at: Some(Utc::now().naive_utc()),
-        },
-    ];
-
-    HttpResponse::Ok().json(devices)
-}
-
-pub async fn get_device(req: HttpRequest) -> HttpResponse {
-    let device_id = req.match_info().get("device_id").unwrap().to_owned();
-
-    dbg!(&device_id);
-
-    if device_id.is_empty() {
-        return HttpResponse::NotFound().finish();
+pub async fn create_device(
+    app_state: web::Data<AppState>,
+    body: web::Json<Device>,
+) -> HttpResponse {
+    match db_create_device(&app_state.db_pool, body.name.clone()).await {
+        Err(e) => {
+            warn!("{}", e);
+            HttpResponse::InternalServerError().finish()
+        }
+        Ok(device) => HttpResponse::Ok().json(device),
     }
+}
 
-    let device = Device {
-        device_id,
-        name: String::from("Ardiono UNO"),
-        registered_at: Some(Utc::now().naive_utc()),
-    };
+pub async fn list_devices(app_state: web::Data<AppState>) -> HttpResponse {
+    match db_get_all_devices(&app_state.db_pool).await {
+        Err(e) => {
+            warn!("{}", e);
+            HttpResponse::InternalServerError().finish()
+        }
+        Ok(devices) => HttpResponse::Ok().json(devices),
+    }
+}
 
-    HttpResponse::Ok().json(device)
+pub async fn get_device(app_state: web::Data<AppState>, req: HttpRequest) -> HttpResponse {
+    let device_id = req.match_info().get("device_id").unwrap().to_owned();
+    match db_get_device_by_id(&app_state.db_pool, device_id).await {
+        Err(e) => {
+            warn!("{}", e);
+            HttpResponse::InternalServerError().finish()
+        }
+        Ok(device) => match device {
+            Some(device) => HttpResponse::Ok().json(device),
+            None => HttpResponse::NotFound().finish(),
+        },
+    }
 }
 
 #[cfg(test)]
@@ -78,15 +69,15 @@ mod tests {
         let app_data = web::Data::new(AppState {
             health_check_response: String::from("OK"),
             visit_count: Mutex::new(0),
-            db: db_pool,
+            db_pool,
         });
 
         let req = test::TestRequest::default()
             .param("device_id", "11-22".to_owned())
-            .app_data(app_data)
+            .app_data(app_data.clone())
             .to_http_request();
 
-        let resp = get_device(req).await;
+        let resp = get_device(app_data, req).await;
         assert_eq!(resp.status(), StatusCode::OK);
     }
 }
