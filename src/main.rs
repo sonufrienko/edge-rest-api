@@ -1,8 +1,10 @@
 use actix_web::{middleware, web, App, HttpServer};
 use dotenv::dotenv;
+use log::info;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, io, sync::Mutex, time::Duration};
 
+mod db_access;
 mod handlers;
 mod models;
 mod routes;
@@ -14,13 +16,14 @@ use state::AppState;
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     dotenv().ok();
-    env::set_var("RUST_LOG", "actix_web=info");
+    env::set_var("RUST_LOG", "warn,actix_web=info");
     env_logger::init();
 
     // Create a connection pool
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
     let db_pool = PgPoolOptions::new()
         .max_connections(100)
+        .connect_timeout(std::time::Duration::new(30, 0))
         .connect(&db_url)
         .await
         .unwrap();
@@ -29,7 +32,7 @@ async fn main() -> io::Result<()> {
     let app_data = web::Data::new(AppState {
         health_check_response: String::from("OK"),
         visit_count: Mutex::new(0),
-        db: db_pool,
+        db_pool,
     });
 
     // Construct App and routes
@@ -39,6 +42,8 @@ async fn main() -> io::Result<()> {
             .wrap(middleware::Logger::default())
             .configure(all_routes)
     };
+
+    info!("Starting server on port 8080");
 
     // Start HTTP server
     HttpServer::new(app)
