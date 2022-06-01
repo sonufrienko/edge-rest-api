@@ -7,7 +7,7 @@
 - [x] Rest API with Actix
 - [x] Connect to PostgreSQL
 - [x] Integration tests
-- [ ] Implement CRUD in DB
+- [x] Implement CRUD in DB
 - [ ] Authentication (JWT or Cert)
 - [ ] Handle errors
 - [ ] Unit tests
