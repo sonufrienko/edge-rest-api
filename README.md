@@ -9,9 +9,10 @@
 - [x] Integration tests
 - [x] Implement CRUD in DB
 - [ ] Authentication (JWT or Cert)
-- [ ] Handle errors
+- [x] Handle errors
 - [ ] Unit tests
 - [ ] Benchmarking
 - [ ] Logging
+- [ ] CI/CD
 
 ## Getting Started

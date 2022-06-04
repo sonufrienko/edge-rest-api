@@ -5,6 +5,7 @@ use sqlx::postgres::PgPoolOptions;
 use std::{env, io, sync::Mutex, time::Duration};
 
 mod db_access;
+mod errors;
 mod handlers;
 mod models;
 mod routes;
