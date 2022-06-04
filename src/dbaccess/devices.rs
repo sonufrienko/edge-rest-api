@@ -1,5 +1,5 @@
-use super::errors::ApiError;
-use super::models::*;
+use crate::errors::ApiError;
+use crate::models::devices::*;
 use sqlx::types::uuid::Uuid;
 use sqlx::{query_as, PgPool};
 

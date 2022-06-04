@@ -1,19 +1,10 @@
-use super::db_access::*;
-use super::errors::ApiError;
-use super::models::*;
-use super::state::AppState;
+use crate::dbaccess::devices::*;
+use crate::errors::ApiError;
+use crate::models::devices::*;
+use crate::state::AppState;
 use actix_web::{web, HttpRequest, HttpResponse, Result};
 
-pub async fn health_check(app_state: web::Data<AppState>) -> Result<HttpResponse> {
-    let health_check_response = &app_state.health_check_response;
-    let mut visit_count = app_state.visit_count.lock().unwrap();
-    let response = format!("{} {} times", health_check_response, visit_count);
-    *visit_count += 1;
-
-    Ok(HttpResponse::Ok().json(response))
-}
-
-pub async fn create_device(
+pub async fn create(
     app_state: web::Data<AppState>,
     body: web::Json<Device>,
 ) -> Result<HttpResponse, ApiError> {
@@ -22,13 +13,13 @@ pub async fn create_device(
         .map(|data| HttpResponse::Ok().json(data))
 }
 
-pub async fn list_devices(app_state: web::Data<AppState>) -> Result<HttpResponse, ApiError> {
+pub async fn list(app_state: web::Data<AppState>) -> Result<HttpResponse, ApiError> {
     db_get_all_devices(&app_state.db_pool)
         .await
         .map(|data| HttpResponse::Ok().json(data))
 }
 
-pub async fn get_device(
+pub async fn get(
     app_state: web::Data<AppState>,
     req: HttpRequest,
 ) -> Result<HttpResponse, ApiError> {
@@ -65,7 +56,7 @@ mod tests {
             .app_data(app_data.clone())
             .to_http_request();
 
-        let resp = get_device(app_data, req).await;
+        let resp = get(app_data, req).await;
         assert!(resp.is_err());
     }
 
@@ -81,7 +72,7 @@ mod tests {
             db_pool,
         });
 
-        let resp = list_devices(app_data).await;
+        let resp = list(app_data).await;
         assert!(resp.is_ok());
         assert_eq!(resp.unwrap().status(), StatusCode::OK);
     }

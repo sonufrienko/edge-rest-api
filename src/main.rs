@@ -4,7 +4,7 @@ use log::info;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, io, sync::Mutex, time::Duration};
 
-mod db_access;
+mod dbaccess;
 mod errors;
 mod handlers;
 mod models;
