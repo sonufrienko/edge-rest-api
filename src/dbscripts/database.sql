@@ -1,19 +1,23 @@
-/* Drop table if it already exists*/
-drop table if exists ezy_course_c5;
-/* Create a table. */
-/* Note: Don't put a comma after last field */
-create table ezy_course_c5
-(
-    course_id serial primary key,
-    tutor_id INT not null,
-    course_name varchar(140) not null,
-    posted_time TIMESTAMP default now()
-);
+-- Table: public.devices
+-- DROP TABLE IF EXISTS public.devices;
 
-/* Load seed data for testing */
-insert into ezy_course_c5
-    (course_id,tutor_id, course_name,posted_time)
-values(1, 1, 'First course', '2021-03-17 05:40:00');
-insert into ezy_course_c5
-    (course_id, tutor_id, course_name,posted_time)
-values(2, 1, 'Second course', '2021-03-18 05:45:00');
+CREATE TABLE IF NOT EXISTS public.devices
+(
+    device_id character varying(36) COLLATE pg_catalog."default" NOT NULL DEFAULT (uuid_generate_v1())::text,
+    name character varying(200) COLLATE pg_catalog."default" NOT NULL,
+    registered_at timestamp without time zone NOT NULL DEFAULT (now())::timestamp without time zone,
+    status character varying(30),
+    CONSTRAINT devices_pkey PRIMARY KEY (device_id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.devices OWNER to admin;
+ALTER TABLE IF EXISTS public.devices OWNER to api;
+GRANT ALL ON TABLE public.devices TO admin;
+GRANT ALL ON TABLE public.devices TO api;
+
+-- Load data for testing
+
+INSERT INTO public.devices(name) VALUES ('Arduino UNI');
+INSERT INTO public.devices(name, status) VALUES ('Arduino Nano', 'RUNING');

@@ -1,20 +1,31 @@
-use crate::dbaccess::devices::*;
+use crate::dbaccess::devices;
 use crate::errors::ApiError;
-use crate::models::devices::*;
+use crate::models::devices::{CreateDevice, UpdateDevice};
 use crate::state::AppState;
 use actix_web::{web, HttpRequest, HttpResponse, Result};
 
 pub async fn create(
     app_state: web::Data<AppState>,
-    body: web::Json<Device>,
+    body: web::Json<CreateDevice>,
 ) -> Result<HttpResponse, ApiError> {
-    db_create_device(&app_state.db_pool, body.name.clone())
+    devices::db_create_device(&app_state.db_pool, body.into_inner())
+        .await
+        .map(|data| HttpResponse::Ok().json(data))
+}
+
+pub async fn update(
+    app_state: web::Data<AppState>,
+    body: web::Json<UpdateDevice>,
+    req: HttpRequest,
+) -> Result<HttpResponse, ApiError> {
+    let device_id = req.match_info().get("device_id").unwrap().to_owned();
+    devices::db_update_device(&app_state.db_pool, device_id, body.into_inner())
         .await
         .map(|data| HttpResponse::Ok().json(data))
 }
 
 pub async fn list(app_state: web::Data<AppState>) -> Result<HttpResponse, ApiError> {
-    db_get_all_devices(&app_state.db_pool)
+    devices::db_get_all_devices(&app_state.db_pool)
         .await
         .map(|data| HttpResponse::Ok().json(data))
 }
@@ -24,9 +35,19 @@ pub async fn get(
     req: HttpRequest,
 ) -> Result<HttpResponse, ApiError> {
     let device_id = req.match_info().get("device_id").unwrap().to_owned();
-    db_get_device_by_id(&app_state.db_pool, device_id)
+    devices::db_get_device_by_id(&app_state.db_pool, device_id)
         .await
         .map(|data| HttpResponse::Ok().json(data))
+}
+
+pub async fn delete(
+    app_state: web::Data<AppState>,
+    req: HttpRequest,
+) -> Result<HttpResponse, ApiError> {
+    let device_id = req.match_info().get("device_id").unwrap().to_owned();
+    devices::db_delete_device(&app_state.db_pool, device_id)
+        .await
+        .map(|data| HttpResponse::Ok().finish())
 }
 
 #[cfg(test)]
@@ -72,8 +93,7 @@ mod tests {
             db_pool,
         });
 
-        let resp = list(app_data).await;
-        assert!(resp.is_ok());
-        assert_eq!(resp.unwrap().status(), StatusCode::OK);
+        let resp = list(app_data).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
     }
 }
