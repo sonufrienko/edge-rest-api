@@ -6,6 +6,8 @@ pub fn devices_routes(cfg: &mut web::ServiceConfig) {
         web::scope("/devices")
             .route("", web::get().to(devices::list))
             .route("", web::post().to(devices::create))
+            .route("/{device_id}", web::delete().to(devices::delete))
+            .route("/{device_id}", web::patch().to(devices::update))
             .route("/{device_id}", web::get().to(devices::get)),
     );
 }
